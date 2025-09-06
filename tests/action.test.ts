@@ -217,7 +217,7 @@ describe('github-tag-action', () => {
     });
   });
 
-  describe('release branches', () => {
+  describe('regular release', () => {
     beforeEach(() => {
       jest.clearAllMocks();
       setBranch('release');
@@ -366,14 +366,14 @@ describe('github-tag-action', () => {
           node_id: 'string',
         },
         {
-          name: 'v2.1.3-prerelease.0',
+          name: 'v2.1.3-rc.0',
           commit: { sha: '678901', url: '' },
           zipball_url: '',
           tarball_url: 'string',
           node_id: 'string',
         },
         {
-          name: 'v2.1.3-prerelease.1',
+          name: 'v2.1.3-rc.1',
           commit: { sha: '234567', url: '' },
           zipball_url: '',
           tarball_url: 'string',
@@ -446,18 +446,18 @@ describe('github-tag-action', () => {
     });
   });
 
-  describe('pre-release branches', () => {
+  describe('pre-release', () => {
     beforeEach(() => {
       jest.clearAllMocks();
-      setBranch('prerelease');
-      setInput('pre_release_branches', 'prerelease');
+      setBranch('main');
+      setInput('is_pre_release', 'true');
     });
 
     it('does not create tag without commits and default_bump set to false', async () => {
       /*
        * Given
        */
-      setInput('default_prerelease_bump', 'false');
+      setInput('default_bump', 'false');
       const commits: any[] = [];
       jest
         .spyOn(utils, 'getCommits')
@@ -492,7 +492,6 @@ describe('github-tag-action', () => {
       /*
        * Given
        */
-      setInput('default_prerelease_bump', 'prerelease');
       const commits = [{ message: 'this is my first fix', hash: null }];
       jest
         .spyOn(utils, 'getCommits')
@@ -520,7 +519,7 @@ describe('github-tag-action', () => {
        * Then
        */
       expect(mockCreateTag).toHaveBeenCalledWith(
-        'v1.2.4-prerelease.0',
+        'v1.2.4-rc.0',
         expect.any(Boolean),
         expect.any(String)
       );
@@ -558,7 +557,7 @@ describe('github-tag-action', () => {
        * Then
        */
       expect(mockCreateTag).toHaveBeenCalledWith(
-        'v1.2.4-prerelease.0',
+        'v1.2.4-rc.0',
         expect.any(Boolean),
         expect.any(String)
       );
@@ -598,7 +597,7 @@ describe('github-tag-action', () => {
        * Then
        */
       expect(mockCreateTag).toHaveBeenCalledWith(
-        'v1.3.0-prerelease.0',
+        'v1.3.0-rc.0',
         expect.any(Boolean),
         expect.any(String)
       );
@@ -642,7 +641,7 @@ describe('github-tag-action', () => {
        * Then
        */
       expect(mockCreateTag).toHaveBeenCalledWith(
-        'v2.0.0-prerelease.0',
+        'v2.0.0-rc.0',
         expect.any(Boolean),
         expect.any(String)
       );
@@ -665,7 +664,7 @@ describe('github-tag-action', () => {
 
       const validTags = [
         {
-          name: 'v1.2.3-prerelease.0',
+          name: 'v1.2.3-rc.0',
           commit: { sha: '012345', url: '' },
           zipball_url: '',
           tarball_url: 'string',
@@ -699,7 +698,7 @@ describe('github-tag-action', () => {
        * Then
        */
       expect(mockCreateTag).toHaveBeenCalledWith(
-        'v2.2.0-prerelease.0',
+        'v2.2.0-rc.0',
         expect.any(Boolean),
         expect.any(String)
       );
@@ -744,7 +743,7 @@ describe('github-tag-action', () => {
        * Then
        */
       expect(mockCreateTag).toHaveBeenCalledWith(
-        'v1.3.0-prerelease.0',
+        'v1.3.0-rc.0',
         expect.any(Boolean),
         expect.any(String)
       );
@@ -752,11 +751,10 @@ describe('github-tag-action', () => {
     });
   });
 
-  describe('other branches', () => {
+  describe('non release branch', () => {
     beforeEach(() => {
       jest.clearAllMocks();
       setBranch('development');
-      setInput('pre_release_branches', 'prerelease');
       setInput('release_branches', 'release');
     });
 

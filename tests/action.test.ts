@@ -871,4 +871,264 @@ describe('github-tag-action', () => {
       expect(mockSetFailed).not.toBeCalled();
     });
   });
+
+  describe('custom tag', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      setBranch('master');
+    });
+
+    it("does create tag when custom tag isn't semver", async () => {
+      /*
+      * Given
+      */
+     setInput('custom_tag', '2024-09-01');
+      const commits = [{ message: 'fix: this is my first fix', hash: null }];
+      jest
+        .spyOn(utils, 'getCommits')
+        .mockImplementation(async (sha) => commits);
+
+      const validTags = [
+        {
+          name: 'v1.2.3',
+          commit: { sha: '012345', url: '' },
+          zipball_url: '',
+          tarball_url: 'string',
+          node_id: 'string',
+        },
+      ];
+      jest
+        .spyOn(utils, 'getValidTags')
+        .mockImplementation(async () => validTags);
+
+      /*
+       * When
+       */
+      await action();
+
+      /*
+       * Then
+       */
+      expect(mockCreateTag).toHaveBeenCalledWith(
+        'v2024-09-01',
+        expect.any(Boolean),
+        expect.any(String)
+      );
+      expect(mockSetFailed).not.toBeCalled();
+      expect(mockSetOutput).toHaveBeenCalledWith('release_type', 'custom');
+    });
+
+    it('does create tag when custom tag is semver', async () => {
+      /*
+       * Given
+       */
+      setInput('custom_tag', '2.1.0');
+      const commits = [{ message: 'fix: this is my first fix', hash: null }];
+      jest
+        .spyOn(utils, 'getCommits')
+        .mockImplementation(async (sha) => commits);
+
+      const validTags = [
+        {
+          name: 'v1.2.3',
+          commit: { sha: '012345', url: '' },
+          zipball_url: '',
+          tarball_url: 'string',
+          node_id: 'string',
+        },
+      ];
+      jest
+        .spyOn(utils, 'getValidTags')
+        .mockImplementation(async () => validTags);
+
+      /*
+       * When
+       */
+      await action();
+
+      /*
+       * Then
+       */
+      expect(mockCreateTag).toHaveBeenCalledWith(
+        'v2.1.0',
+        expect.any(Boolean),
+        expect.any(String)
+      );
+      expect(mockSetFailed).not.toBeCalled();
+      expect(mockSetOutput).toHaveBeenCalledWith('release_type', 'major');
+      expect(mockSetOutput).toHaveBeenCalledWith('previous_tag', 'v1.2.3');
+      expect(mockSetOutput).toHaveBeenCalledWith('previous_version', '1.2.3');
+    });
+
+    it('does create tag when custom tag is pre-release semver', async () => {
+      /*
+       * Given
+       */
+      setInput('custom_tag', '2.1.0-rc.1');
+      const commits = [{ message: 'fix: this is my first fix', hash: null }];
+      jest
+        .spyOn(utils, 'getCommits')
+        .mockImplementation(async (sha) => commits);
+
+      const validTags = [
+        {
+          name: 'v1.2.3',
+          commit: { sha: '012345', url: '' },
+          zipball_url: '',
+          tarball_url: 'string',
+          node_id: 'string',
+        },
+      ];
+      jest
+        .spyOn(utils, 'getValidTags')
+        .mockImplementation(async () => validTags);
+
+      /*
+       * When
+       */
+      await action();
+
+      /*
+       * Then
+       */
+      expect(mockCreateTag).toHaveBeenCalledWith(
+        'v2.1.0-rc.1',
+        expect.any(Boolean),
+        expect.any(String)
+      );
+      expect(mockSetFailed).not.toBeCalled();
+      expect(mockSetOutput).toHaveBeenCalledWith('release_type', 'premajor');
+      expect(mockSetOutput).toHaveBeenCalledWith('previous_tag', 'v1.2.3');
+      expect(mockSetOutput).toHaveBeenCalledWith('previous_version', '1.2.3');
+    });
+
+    it('does create tag when custom tag is pre-release semver and has previous pre-release tag', async () => {
+      /*
+       * Given
+       */
+      setInput('custom_tag', '2.0.0-rc.1');
+      const commits = [{ message: 'fix: this is my first fix', hash: null }];
+      jest
+        .spyOn(utils, 'getCommits')
+        .mockImplementation(async (sha) => commits);
+
+      const validTags = [
+        {
+          name: 'v1.2.3',
+          commit: { sha: '012345', url: '' },
+          zipball_url: '',
+          tarball_url: 'string',
+          node_id: 'string',
+        },
+        {
+          name: 'v2.0.0-rc.0',
+          commit: { sha: '012345', url: '' },
+          zipball_url: '',
+          tarball_url: 'string',
+          node_id: 'string',
+        },
+      ];
+      jest
+        .spyOn(utils, 'getValidTags')
+        .mockImplementation(async () => validTags);
+
+      /*
+       * When
+       */
+      await action();
+
+      /*
+       * Then
+       */
+      expect(mockCreateTag).toHaveBeenCalledWith(
+        'v2.0.0-rc.1',
+        expect.any(Boolean),
+        expect.any(String)
+      );
+      expect(mockSetFailed).not.toBeCalled();
+      expect(mockSetOutput).toHaveBeenCalledWith('release_type', 'prerelease');
+      expect(mockSetOutput).toHaveBeenCalledWith('previous_tag', 'v2.0.0-rc.0');
+      expect(mockSetOutput).toHaveBeenCalledWith('previous_version', '2.0.0-rc.0');
+    });
+
+    it('does create tag when custom tag is semver and apply_prefix_to_custom_tag is false', async () => {
+      /*
+       * Given
+       */
+      setInput('custom_tag', '2.1.0');
+      setInput('apply_prefix_to_custom_tag', 'false');
+      const commits = [{ message: 'fix: this is my first fix', hash: null }];
+      jest
+        .spyOn(utils, 'getCommits')
+        .mockImplementation(async (sha) => commits);
+
+      const validTags = [
+        {
+          name: 'v1.2.3',
+          commit: { sha: '012345', url: '' },
+          zipball_url: '',
+          tarball_url: 'string',
+          node_id: 'string',
+        },
+      ];
+      jest
+        .spyOn(utils, 'getValidTags')
+        .mockImplementation(async () => validTags);
+
+      /*
+       * When
+       */
+      await action();
+
+      /*
+       * Then
+       */
+      expect(mockCreateTag).toHaveBeenCalledWith(
+        '2.1.0',
+        expect.any(Boolean),
+        expect.any(String)
+      );
+      expect(mockSetFailed).not.toBeCalled();
+    });
+
+    it("does create tag when custom tag isn't semver and apply_prefix_to_custom_tag is false", async () => {
+      /*
+      * Given
+      */
+     setInput('custom_tag', '2024-09-01');
+     setInput('apply_prefix_to_custom_tag', 'false');
+      const commits = [{ message: 'fix: this is my first fix', hash: null }];
+      jest
+        .spyOn(utils, 'getCommits')
+        .mockImplementation(async (sha) => commits);
+
+      const validTags = [
+        {
+          name: 'v1.2.3',
+          commit: { sha: '012345', url: '' },
+          zipball_url: '',
+          tarball_url: 'string',
+          node_id: 'string',
+        },
+      ];
+      jest
+        .spyOn(utils, 'getValidTags')
+        .mockImplementation(async () => validTags);
+
+      /*
+       * When
+       */
+      await action();
+
+      /*
+       * Then
+       */
+      expect(mockCreateTag).toHaveBeenCalledWith(
+        '2024-09-01',
+        expect.any(Boolean),
+        expect.any(String)
+      );
+      expect(mockSetFailed).not.toBeCalled();
+    });
+  });
 });

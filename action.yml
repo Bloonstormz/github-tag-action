@@ -19,20 +19,21 @@ inputs:
     description: "Required for permission to tag the repo."
     required: true
   default_bump:
-    description: "Which type of bump to use when none explicitly provided when commiting to a release branch (default: `patch`)."
+    description: "Which type of bump to use when none explicitly provided when commiting (default: `patch`)."
     required: false
     default: "patch"
-  default_prerelease_bump:
-    description: "Which type of bump to use when none explicitly provided when commiting to a prerelease branch (default: `prerelease`)."
+  is_pre_release:
+    description: "Boolean to indicate if a pre-release should be created."
     required: false
-    default: "prerelease"
+    default: "false"
+  pre_release_identifier:
+    description: "Identifier to use for pre-releases (default: `rc`)."
+    required: false
+    default: "rc"
   tag_prefix:
     description: "A prefix to the tag name (default: `v`)."
     required: false
     default: "v"
-  append_to_pre_release_tag:
-    description: "A suffix to a pre-release tag name (default: `<branch>`)."
-    required: false
   custom_tag:
     description: "Custom tag name. If specified, it overrides bump settings."
     required: false
@@ -43,9 +44,6 @@ inputs:
     description: "Comma separated list of branches (bash reg exp accepted) that will generate the release tags. Other branches and pull-requests generate versions postfixed with the commit hash and do not generate any tag. Examples: `master` or `.*` or `release.*,hotfix.*,master`..."
     required: false
     default: "master,main"
-  pre_release_branches:
-    description: "Comma separated list of branches (bash reg exp accepted) that will generate pre-release tags."
-    required: false
   commit_sha:
     description: "The commit SHA value to add the tag. If specified, it uses this value instead GITHUB_SHA. It could be useful when a previous step merged a branch into github.ref."
     required: false

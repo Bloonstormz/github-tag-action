@@ -29,4 +29,5 @@ export const defaultChangelogRules: Readonly<Record<string, ChangelogRule>> =
     test: { type: 'test', section: 'Tests' },
     build: { type: 'build', section: 'Build Systems' },
     ci: { type: 'ci', section: 'Continuous Integration' },
+    minor: { type: 'minor', section: 'Minor Changes' },
   });

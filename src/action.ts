@@ -17,14 +17,11 @@ import { Await } from './ts';
 
 export default async function main() {
   const defaultBump = core.getInput('default_bump') as ReleaseType | 'false';
-  const defaultPreReleaseBump = core.getInput('default_prerelease_bump') as
-    | ReleaseType
-    | 'false';
+  const isPrerelease = /true/i.test(core.getInput('is_pre_release'));
+  const preReleaseIdentifier = core.getInput('pre_release_identifier') || 'rc';
   const tagPrefix = core.getInput('tag_prefix');
   const customTag = core.getInput('custom_tag');
   const releaseBranches = core.getInput('release_branches');
-  const preReleaseBranches = core.getInput('pre_release_branches');
-  const appendToPreReleaseTag = core.getInput('append_to_pre_release_tag');
   const createAnnotatedTag = /true/i.test(
     core.getInput('create_annotated_tag')
   );
@@ -55,17 +52,6 @@ export default async function main() {
   const isReleaseBranch = releaseBranches
     .split(',')
     .some((branch) => currentBranch.match(branch));
-  const isPreReleaseBranch = preReleaseBranches
-    .split(',')
-    .some((branch) => currentBranch.match(branch));
-  const isPullRequest = isPr(GITHUB_REF);
-  const isPrerelease = !isReleaseBranch && !isPullRequest && isPreReleaseBranch;
-
-  // Sanitize identifier according to
-  // https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
-  const identifier = (
-    appendToPreReleaseTag ? appendToPreReleaseTag : currentBranch
-  ).replace(/[^a-zA-Z0-9-]/g, '-');
 
   const prefixRegex = new RegExp(`^${tagPrefix}`);
 
@@ -74,11 +60,7 @@ export default async function main() {
     /true/i.test(shouldFetchAllTags)
   );
   const latestTag = getLatestTag(validTags, prefixRegex, tagPrefix);
-  const latestPrereleaseTag = getLatestPrereleaseTag(
-    validTags,
-    identifier,
-    prefixRegex
-  );
+  const latestPrereleaseTag = getLatestPrereleaseTag(validTags, preReleaseIdentifier, prefixRegex)
 
   let commits: Await<ReturnType<typeof getCommits>>;
 
@@ -133,16 +115,10 @@ export default async function main() {
       { commits, logger: { log: console.info.bind(console) } }
     );
 
-    // Determine if we should continue with tag creation based on main vs prerelease branch
+    // Determine if we should continue with tag creation
     let shouldContinue = true;
-    if (isPrerelease) {
-      if (!bump && defaultPreReleaseBump === 'false') {
-        shouldContinue = false;
-      }
-    } else {
-      if (!bump && defaultBump === 'false') {
-        shouldContinue = false;
-      }
+    if (!bump && defaultBump === 'false') {
+      shouldContinue = false;
     }
 
     // Default bump is set to false and we did not find an automatic bump
@@ -153,23 +129,18 @@ export default async function main() {
       return;
     }
 
-    // If we don't have an automatic bump for the prerelease, just set our bump as the default
-    if (isPrerelease && !bump) {
-      bump = defaultPreReleaseBump;
-    }
-
-    // If somebody uses custom release rules on a prerelease branch they might create a 'preprepatch' bump.
+    // If somebody uses custom release rules with a prerelease they might create a 'preprepatch' bump.
     const preReg = /^pre/;
     if (isPrerelease && preReg.test(bump)) {
       bump = bump.replace(preReg, '');
     }
 
     const releaseType: ReleaseType = isPrerelease
-      ? `pre${bump}`
+      ? `pre${bump || defaultBump}`
       : bump || defaultBump;
     core.setOutput('release_type', releaseType);
 
-    const incrementedVersion = inc(previousVersion, releaseType, identifier);
+    const incrementedVersion = inc(previousVersion, releaseType, preReleaseIdentifier);
 
     if (!incrementedVersion) {
       core.setFailed('Could not increment version.');
@@ -211,9 +182,9 @@ export default async function main() {
   core.info(`Changelog is ${changelog}.`);
   core.setOutput('changelog', changelog);
 
-  if (!isReleaseBranch && !isPreReleaseBranch) {
+  if (!isReleaseBranch) {
     core.info(
-      'This branch is neither a release nor a pre-release branch. Skipping the tag creation.'
+      'This branch is not a release branch. Skipping the tag creation.'
     );
     return;
   }

@@ -40,16 +40,16 @@ jobs:
 #### Filter branches
 
 - **release_branches** _(optional)_ - Comma separated list of branches (JavaScript regular expression accepted) that will generate the release tags. Other branches and pull-requests generate versions postfixed with the commit hash and do not generate any repository tag. Examples: `master` or `.*` or `release.*,hotfix.*,master`... (default: `master,main`).
-- **pre_release_branches** _(optional)_ - Comma separated list of branches (JavaScript regular expression accepted) that will generate the pre-release tags.
 
 #### Customize the tag
 
 - **default_bump** _(optional)_ - Which type of bump to use when [none is explicitly provided](#bumping) when commiting to a release branch (default: `patch`). You can also set `false` to avoid generating a new tag when none is explicitly provided. Can be `patch, minor or major`.
-- **default_prerelease_bump** _(optional)_ - Which type of bump to use when [none is explicitly provided](#bumping) when commiting to a prerelease branch (default: `prerelease`). You can also set `false` to avoid generating a new tag when none is explicitly provided. Can be `prerelease, prepatch, preminor or premajor`.
-- **custom_tag** _(optional)_ - Custom tag name. If specified, it overrides bump settings.
-- **create_annotated_tag** _(optional)_ - Boolean to create an annotated rather than a lightweight one (default: `false`).
+- **is_pre_release** _(optional)_ - Boolean to indificate if a pre-release should be created.
+- **pre_release_identifier** _(optional)_ - Identifier to use for pre-releases (default: `rc`).
 - **tag_prefix** _(optional)_ - A prefix to the tag name (default: `v`).
-- **append_to_pre_release_tag** _(optional)_ - A suffix to the pre-release tag name (default: `<branch>`).
+- **custom_tag** _(optional)_ - Custom tag name. If the custom tag is not semver compatible, it overrides bump settings. Overrides pre_release_identifier and is_pre_release depending on the value.
+- **apply_prefix_to_custom_tag** _(optional)_ - Boolean to indicate if tag_prefix should be applied to the custom_tag (default: `true`).
+- **create_annotated_tag** _(optional)_ - Boolean to create an annotated rather than a lightweight one (default: `false`).
 
 #### Customize the conventional commit messages & titles of changelog sections
 

@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import { gte, inc, parse, ReleaseType, SemVer, valid } from 'semver';
+import { diff, gte, inc, parse, prerelease, ReleaseType, SemVer, valid } from 'semver';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { generateNotes } from '@semantic-release/release-notes-generator';
 import {
@@ -17,10 +17,11 @@ import { Await } from './ts';
 
 export default async function main() {
   const defaultBump = core.getInput('default_bump') as ReleaseType | 'false';
-  const isPrerelease = /true/i.test(core.getInput('is_pre_release'));
-  const preReleaseIdentifier = core.getInput('pre_release_identifier') || 'rc';
+  const default_isPreRelease = /true/i.test(core.getInput('is_pre_release'));
+  const default_preReleaseIdentifier = core.getInput('pre_release_identifier') || 'rc';
   const tagPrefix = core.getInput('tag_prefix');
   const customTag = core.getInput('custom_tag');
+  const applyPrefixToCustomTag = /true/i.test(core.getInput('apply_prefix_to_custom_tag'));
   const releaseBranches = core.getInput('release_branches');
   const createAnnotatedTag = /true/i.test(
     core.getInput('create_annotated_tag')
@@ -48,6 +49,18 @@ export default async function main() {
     return;
   }
 
+  let preReleaseIdentifier: string;
+  let isPrerelease: boolean;
+
+  const customTagPrerelease = prerelease(customTag);
+  if (customTag && customTagPrerelease) {
+    preReleaseIdentifier = customTagPrerelease[0].toString();
+    isPrerelease = true;
+  } else {
+    preReleaseIdentifier = default_preReleaseIdentifier;
+    isPrerelease = default_isPreRelease;
+  }
+
   const currentBranch = getBranchFromRef(GITHUB_REF);
   const isReleaseBranch = releaseBranches
     .split(',')
@@ -66,12 +79,14 @@ export default async function main() {
 
   let newVersion: string;
 
-  if (customTag) {
+  if (customTag && !valid(customTag)) {
     commits = await getCommits(latestTag.commit.sha, commitRef);
 
     core.setOutput('release_type', 'custom');
     newVersion = customTag;
   } else {
+    // Note that if custom tag is defined, it is valid semver within this else block
+
     let previousTag: ReturnType<typeof getLatestTag> | null;
     let previousVersion: SemVer | null;
     if (!latestPrereleaseTag) {
@@ -104,61 +119,81 @@ export default async function main() {
     core.setOutput('previous_tag', previousTag.name);
 
     commits = await getCommits(previousTag.commit.sha, commitRef);
-
-    let bump = await analyzeCommits(
-      {
-        releaseRules: mappedReleaseRules
-          ? // analyzeCommits doesn't appreciate rules with a section /shrug
-            mappedReleaseRules.map(({ section, ...rest }) => ({ ...rest }))
-          : undefined,
-      },
-      { commits, logger: { log: console.info.bind(console) } }
-    );
-
-    // Determine if we should continue with tag creation
-    let shouldContinue = true;
-    if (!bump && defaultBump === 'false') {
-      shouldContinue = false;
-    }
-
-    // Default bump is set to false and we did not find an automatic bump
-    if (!shouldContinue) {
-      core.debug(
-        'No commit specifies the version bump. Skipping the tag creation.'
+    
+    // Determine release type based on commits/bump or custom tag
+    let releaseType: ReleaseType;
+    if (customTag) {
+      releaseType = diff(previousVersion, customTag) as ReleaseType;
+    } else {
+  
+      let bump = await analyzeCommits(
+        {
+          releaseRules: mappedReleaseRules
+            ? // analyzeCommits doesn't appreciate rules with a section /shrug
+              mappedReleaseRules.map(({ section, ...rest }) => ({ ...rest }))
+            : undefined,
+        },
+        { commits, logger: { log: console.info.bind(console) } }
       );
-      return;
+  
+      // Determine if we should continue with tag creation
+      let shouldContinue = true;
+      if (!bump && defaultBump === 'false') {
+        shouldContinue = false;
+      }
+  
+      // Default bump is set to false and we did not find an automatic bump
+      if (!shouldContinue) {
+        core.debug(
+          'No commit specifies the version bump. Skipping the tag creation.'
+        );
+        return;
+      }
+  
+      // If somebody uses custom release rules with a prerelease they might create a 'preprepatch' bump.
+      const preReg = /^pre/;
+      if (isPrerelease && preReg.test(bump)) {
+        bump = bump.replace(preReg, '');
+      }
+
+      releaseType = isPrerelease
+        ? `pre${bump || defaultBump}`
+        : bump || defaultBump;
     }
 
-    // If somebody uses custom release rules with a prerelease they might create a 'preprepatch' bump.
-    const preReg = /^pre/;
-    if (isPrerelease && preReg.test(bump)) {
-      bump = bump.replace(preReg, '');
-    }
-
-    const releaseType: ReleaseType = isPrerelease
-      ? `pre${bump || defaultBump}`
-      : bump || defaultBump;
     core.setOutput('release_type', releaseType);
 
-    const incrementedVersion = inc(previousVersion, releaseType, preReleaseIdentifier);
+    // Auto bump tag if custom tag is not provided
+    if (!customTag) {
+      const incrementedVersion = inc(previousVersion, releaseType, preReleaseIdentifier);
+  
+      if (!incrementedVersion) {
+        core.setFailed('Could not increment version.');
+        return;
+      }
+  
+      if (!valid(incrementedVersion)) {
+        core.setFailed(`${incrementedVersion} is not a valid semver.`);
+        return;
+      }
 
-    if (!incrementedVersion) {
-      core.setFailed('Could not increment version.');
-      return;
+      newVersion = incrementedVersion;
+    } else {
+      newVersion = customTag;
     }
 
-    if (!valid(incrementedVersion)) {
-      core.setFailed(`${incrementedVersion} is not a valid semver.`);
-      return;
-    }
-
-    newVersion = incrementedVersion;
   }
 
   core.info(`New version is ${newVersion}.`);
   core.setOutput('new_version', newVersion);
 
-  const newTag = `${tagPrefix}${newVersion}`;
+  let newTag: string;
+  if (!customTag || applyPrefixToCustomTag) {
+    newTag = `${tagPrefix}${newVersion}`;
+  }  else {
+    // No custom tag and applyPrefixToCustomTag is false
+    newTag = newVersion;
+  }
   core.info(`New tag after applying prefix is ${newTag}.`);
   core.setOutput('new_tag', newTag);
 

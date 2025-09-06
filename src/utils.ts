@@ -83,7 +83,7 @@ export function getLatestPrereleaseTag(
 ) {
   return tags
     .filter((tag) => prerelease(tag.name.replace(prefixRegex, '')))
-    .find((tag) => tag.name.replace(prefixRegex, '').match(identifier));
+    .find((tag) => tag.name.replace(prefixRegex, '').match(`-${identifier}`));
 }
 
 export function mapCustomReleaseRules(customReleaseTypes: string) {

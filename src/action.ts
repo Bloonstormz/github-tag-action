@@ -94,6 +94,7 @@ export default async function main() {
 
   let newVersion: string;
 
+  let previousTag: ReturnType<typeof getLatestTag> | undefined;
   if (customTag && !valid(customTag)) {
     commits = await getCommits(latestTag.commit.sha, commitRef);
 
@@ -102,7 +103,6 @@ export default async function main() {
   } else {
     // Note that if custom tag is defined, it is valid semver within this else block
 
-    let previousTag: ReturnType<typeof getLatestTag> | null;
     let previousVersion: SemVer | null;
     if (!latestPrereleaseTag) {
       previousTag = latestTag;
@@ -227,7 +227,7 @@ export default async function main() {
       options: {
         repositoryUrl: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}`,
       },
-      lastRelease: { gitTag: latestTag.name },
+      lastRelease: { gitTag: previousTag?.name || latestTag.name },
       nextRelease: { gitTag: newTag, version: newVersion },
     }
   );

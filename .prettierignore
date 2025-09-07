@@ -1,8 +1,9 @@
 /.github/
 /.vscode/
-/lib/
+/dist/
 /docs/
 /*.json
 /*.js
+/*.mjs
 /*.yml
 /*.md

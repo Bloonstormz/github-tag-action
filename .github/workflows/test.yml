@@ -2,6 +2,12 @@ name: "Test typescript-action"
 on:
   pull_request:
     types: [opened, reopened, synchronize]
+    paths:
+      - 'test/**'
+      - 'src/**'
+      - '.github/workflows/test.yml'
+      - 'package.json'
+      - 'package-lock.json'
 
 jobs:
   test:

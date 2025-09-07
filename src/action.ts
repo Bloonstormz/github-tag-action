@@ -1,10 +1,20 @@
 import * as core from '@actions/core';
-import { diff, gte, inc, parse, prerelease, ReleaseType, SemVer, valid } from 'semver';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { generateNotes } from '@semantic-release/release-notes-generator';
 import {
+  diff,
+  gte,
+  inc,
+  parse,
+  prerelease,
+  ReleaseType,
+  SemVer,
+  valid,
+} from 'semver';
+import { createTag } from './github';
+import { Await } from './ts';
+import {
   getBranchFromRef,
-  isPr,
   getCommits,
   getLatestPrereleaseTag,
   getLatestTag,
@@ -12,16 +22,17 @@ import {
   mapCustomReleaseRules,
   mergeWithDefaultChangelogRules,
 } from './utils';
-import { createTag } from './github';
-import { Await } from './ts';
 
 export default async function main() {
   const defaultBump = core.getInput('default_bump') as ReleaseType | 'false';
   const default_isPreRelease = /true/i.test(core.getInput('is_pre_release'));
-  const default_preReleaseIdentifier = core.getInput('pre_release_identifier') || 'rc';
+  const default_preReleaseIdentifier =
+    core.getInput('pre_release_identifier') || 'rc';
   const tagPrefix = core.getInput('tag_prefix');
   const customTag = core.getInput('custom_tag');
-  const applyPrefixToCustomTag = /true/i.test(core.getInput('apply_prefix_to_custom_tag'));
+  const applyPrefixToCustomTag = /true/i.test(
+    core.getInput('apply_prefix_to_custom_tag')
+  );
   const releaseBranches = core.getInput('release_branches');
   const createAnnotatedTag = /true/i.test(
     core.getInput('create_annotated_tag')
@@ -73,7 +84,11 @@ export default async function main() {
     /true/i.test(shouldFetchAllTags)
   );
   const latestTag = getLatestTag(validTags, prefixRegex, tagPrefix);
-  const latestPrereleaseTag = getLatestPrereleaseTag(validTags, preReleaseIdentifier, prefixRegex)
+  const latestPrereleaseTag = getLatestPrereleaseTag(
+    validTags,
+    preReleaseIdentifier,
+    prefixRegex
+  );
 
   let commits: Await<ReturnType<typeof getCommits>>;
 
@@ -119,13 +134,12 @@ export default async function main() {
     core.setOutput('previous_tag', previousTag.name);
 
     commits = await getCommits(previousTag.commit.sha, commitRef);
-    
+
     // Determine release type based on commits/bump or custom tag
     let releaseType: ReleaseType;
     if (customTag) {
       releaseType = diff(previousVersion, customTag) as ReleaseType;
     } else {
-  
       let bump = await analyzeCommits(
         {
           releaseRules: mappedReleaseRules
@@ -135,13 +149,13 @@ export default async function main() {
         },
         { commits, logger: { log: console.info.bind(console) } }
       );
-  
+
       // Determine if we should continue with tag creation
       let shouldContinue = true;
       if (!bump && defaultBump === 'false') {
         shouldContinue = false;
       }
-  
+
       // Default bump is set to false and we did not find an automatic bump
       if (!shouldContinue) {
         core.debug(
@@ -149,7 +163,7 @@ export default async function main() {
         );
         return;
       }
-  
+
       // If somebody uses custom release rules with a prerelease they might create a 'preprepatch' bump.
       const preReg = /^pre/;
       if (isPrerelease && preReg.test(bump)) {
@@ -165,13 +179,17 @@ export default async function main() {
 
     // Auto bump tag if custom tag is not provided
     if (!customTag) {
-      const incrementedVersion = inc(previousVersion, releaseType, preReleaseIdentifier);
-  
+      const incrementedVersion = inc(
+        previousVersion,
+        releaseType,
+        preReleaseIdentifier
+      );
+
       if (!incrementedVersion) {
         core.setFailed('Could not increment version.');
         return;
       }
-  
+
       if (!valid(incrementedVersion)) {
         core.setFailed(`${incrementedVersion} is not a valid semver.`);
         return;
@@ -181,7 +199,6 @@ export default async function main() {
     } else {
       newVersion = customTag;
     }
-
   }
 
   core.info(`New version is ${newVersion}.`);
@@ -190,7 +207,7 @@ export default async function main() {
   let newTag: string;
   if (!customTag || applyPrefixToCustomTag) {
     newTag = `${tagPrefix}${newVersion}`;
-  }  else {
+  } else {
     // No custom tag and applyPrefixToCustomTag is false
     newTag = newVersion;
   }

@@ -1,7 +1,7 @@
-import action from '../src/action';
-import * as utils from '../src/utils';
-import * as github from '../src/github';
 import * as core from '@actions/core';
+import action from '../src/action';
+import * as github from '../src/github';
+import * as utils from '../src/utils';
 import {
   loadDefaultInputs,
   setBranch,
@@ -880,9 +880,9 @@ describe('github-tag-action', () => {
 
     it("does create tag when custom tag isn't semver", async () => {
       /*
-      * Given
-      */
-     setInput('custom_tag', '2024-09-01');
+       * Given
+       */
+      setInput('custom_tag', '2024-09-01');
       const commits = [{ message: 'fix: this is my first fix', hash: null }];
       jest
         .spyOn(utils, 'getCommits')
@@ -1048,7 +1048,10 @@ describe('github-tag-action', () => {
       expect(mockSetFailed).not.toBeCalled();
       expect(mockSetOutput).toHaveBeenCalledWith('release_type', 'prerelease');
       expect(mockSetOutput).toHaveBeenCalledWith('previous_tag', 'v2.0.0-rc.0');
-      expect(mockSetOutput).toHaveBeenCalledWith('previous_version', '2.0.0-rc.0');
+      expect(mockSetOutput).toHaveBeenCalledWith(
+        'previous_version',
+        '2.0.0-rc.0'
+      );
     });
 
     it('does create tag when custom tag is semver and apply_prefix_to_custom_tag is false', async () => {
@@ -1093,10 +1096,10 @@ describe('github-tag-action', () => {
 
     it("does create tag when custom tag isn't semver and apply_prefix_to_custom_tag is false", async () => {
       /*
-      * Given
-      */
-     setInput('custom_tag', '2024-09-01');
-     setInput('apply_prefix_to_custom_tag', 'false');
+       * Given
+       */
+      setInput('custom_tag', '2024-09-01');
+      setInput('apply_prefix_to_custom_tag', 'false');
       const commits = [{ message: 'fix: this is my first fix', hash: null }];
       jest
         .spyOn(utils, 'getCommits')

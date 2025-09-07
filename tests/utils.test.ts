@@ -1,8 +1,8 @@
+import * as core from '@actions/core';
+import { defaultChangelogRules } from '../src/defaults';
+import * as github from '../src/github';
 import * as utils from '../src/utils';
 import { getValidTags } from '../src/utils';
-import * as core from '@actions/core';
-import * as github from '../src/github';
-import { defaultChangelogRules } from '../src/defaults';
 
 jest.spyOn(core, 'debug').mockImplementation(() => {});
 jest.spyOn(core, 'warning').mockImplementation(() => {});

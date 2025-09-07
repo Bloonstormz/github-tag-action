@@ -1,0 +1,102 @@
+name: "Create Release"
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+    build:
+        # Skip build if the commit message contains [skip ci] or if the committer is github-actions[bot] - for example when the version is auto-bumped
+        if: ${{ !(endsWith(github.event.head_commit.message, '[skip ci]') || github.event.head_commit.committer.name == 'github-actions[bot]') }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build project
+              run: npm run build
+            
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: dist
+                path: dist
+
+    release:
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            - name: Download artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: dist
+
+            - name: Get needed files
+              uses: actions/checkout@v4
+              with:
+                sparse-checkout: |
+                  package.json
+                  package-lock.json
+                  action.yml
+
+            - name: Auto bump version
+              id: tag
+              uses: ./action.yml
+              with:
+                github_token: ${{ secrets.GITHUB_TOKEN }}
+                dry_run: "true"
+
+            - name: Bump package.json version
+              id: bump
+              if: steps.tag.outputs.new_version != ''
+              run: |
+                # Get version in package.json
+                VERSION=$(jq -r '.version' package.json)
+
+                SHOULD_BUMP=false
+                if [[ $VERSION == "null" ]]; then
+                  SHOULD_BUMP=true
+                  echo "::notice file=package.json,title=Version Bump::No version found in package.json. Setting to ${{ steps.tag.outputs.new_version }}"
+                else
+                  RELATIVE_VERSION=$(node -e "console.log(require('semver').compare('$VERSION', '${{ steps.tag.outputs.new_version }}'))")
+                  case $RELATIVE_VERSION in
+                    1)
+                      echo "::error file=package.json,title=Version Error::Version in package.json ($VERSION) is greater than auto-bumped version (${{ steps.tag.outputs.new_version }}). Please update package.json to match."
+                      exit 1
+                      ;;
+                    0)
+                      echo "Current version ($VERSION) is the same as new version (${{ steps.tag.outputs.new_version }}). No changes needed."
+                      ;;
+                    -1)
+                      SHOULD_BUMP=true
+                      echo "::notice file=package.json,title=Version Bump::Bumping package.json version from $VERSION to ${{ steps.tag.outputs.new_version }}"
+                      echo "Bumping version from $VERSION to ${{ steps.tag.outputs.new_version }}"
+                      ;;
+                  esac
+                fi
+
+                git config user.name "github-actions[bot]"
+                git config user.email "github-actions[bot]@users.noreply.github.com"
+                if [[ $SHOULD_BUMP == true ]]; then
+                  npm version ${{ steps.tag.outputs.new_version }} --git-tag-version false
+                  git add -A
+                fi
+
+                git add -f --sparse dist
+
+                git commit -m "chore: bump version to ${{ steps.tag.outputs.new_version }}"
+                git tag -a ${{ steps.tag.outputs.new_tag }} -m "Release ${{ steps.tag.outputs.new_tag }}"
+
+                git push origin HEAD:master
+                git push origin ${{ steps.tag.outputs.new_tag }}
+
+            - name: Create Release
+              uses: ncipollo/release-action@v1
+              if: steps.bump.outputs.commit_sha != ''
+              with:
+                allowUpdates: true
+                tag: ${{ steps.tag.outputs.new_tag }}
+                body: ${{ steps.tag.outputs.changelog }}

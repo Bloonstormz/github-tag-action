@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
     "target": "es6",
-    "module": "commonjs",                     /* Concatenate and emit output to single file. */
-    "outDir": "./lib",                        /* Redirect output structure to the directory. */
-    "rootDir": "./src",
+    "moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true
   },

@@ -97,7 +97,7 @@ jobs:
                 git commit -q -m "chore: Release ${{ steps.tag.outputs.new_version }} changes"
                 git tag -a ${{ steps.tag.outputs.new_tag }} -m "Release ${{ steps.tag.outputs.new_tag }}"
 
-                git push origin HEAD:master
+                git push origin HEAD:release
                 git push origin ${{ steps.tag.outputs.new_tag }}
 
             - name: Create Release

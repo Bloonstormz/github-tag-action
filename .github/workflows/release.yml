@@ -102,7 +102,6 @@ jobs:
 
             - name: Create Release
               uses: ncipollo/release-action@v1
-              if: steps.bump.outputs.commit_sha != ''
               with:
                 allowUpdates: true
                 tag: ${{ steps.tag.outputs.new_tag }}
